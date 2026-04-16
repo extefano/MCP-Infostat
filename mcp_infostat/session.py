@@ -22,6 +22,7 @@ class DatasetInfo:
 @dataclass
 class InfoStatSession:
     pid: int | None = None
+    ui_backend: str | None = None
     is_ready: bool = False
     active_dataset: Path | None = None
     dataset_info: DatasetInfo | None = None
@@ -47,10 +48,12 @@ class InfoStatSessionManager:
             timeout=timeout or self.config.timeouts.launch_seconds,
         )
         self.session.pid = app_info["pid"]
+        self.session.ui_backend = app_info.get("backend")
         self.session.is_ready = True
         return {
             "running": True,
             "pid": self.session.pid,
+            "ui_backend": self.session.ui_backend,
             "version": self.config.infostat.version,
             "dataset_loaded": False,
         }
@@ -63,6 +66,7 @@ class InfoStatSessionManager:
             "dataset_loaded": self.session.active_dataset is not None,
             "dataset_name": self.session.active_dataset.name if self.session.active_dataset else None,
             "ready": running,
+            "ui_backend": self.session.ui_backend,
             "version": self.config.infostat.version,
         }
 
@@ -110,7 +114,28 @@ class InfoStatSessionManager:
             delimiter=separator,
         )
 
-        # TODO: en Sprint 2 reemplazar por carga real en UI de InfoStat.
+        try:
+            ui_loaded = bool(self.launcher.load_file_via_keyboard(file_path=file_path))
+        except InfoStatError:
+            raise
+        except Exception as exc:
+            raise InfoStatError(
+                code="DATA_LOAD_UI_FAILED",
+                message="Error no esperado al cargar el archivo en la UI de InfoStat.",
+                details={
+                    "file_path": str(file_path),
+                    "exception_type": type(exc).__name__,
+                    "raw": str(exc),
+                },
+            ) from exc
+
+        if not ui_loaded:
+            raise InfoStatError(
+                code="DATA_LOAD_UI_FAILED",
+                message="No se pudo cargar el archivo en InfoStat mediante estrategia de teclado.",
+                details={"file_path": str(file_path)},
+            )
+
         return {
             "file_path": str(file_path),
             "rows": rows,
@@ -119,7 +144,9 @@ class InfoStatSessionManager:
             "sheet_name": sheet_name,
             "delimiter": separator,
             "has_header": has_header,
-            "mode": "metadata_only",
+            "mode": "ui_keyboard",
+            "ui_loaded": True,
+            "ui_backend": self.session.ui_backend,
         }
 
     def data_get_info(self) -> dict[str, Any]:

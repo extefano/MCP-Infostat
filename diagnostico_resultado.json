@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-04-16T20:26:00",
+  "timestamp": "2026-04-16T20:46:59",
   "seccion_1_python": {
     "venv_existe": true,
     "python_version": "3.14.4",
     "dependencias_ok": true,
     "server_importa": true,
-    "tests_passed": 7,
+    "tests_passed": 8,
     "tests_failed": 0
   },
   "seccion_2_infostat": {
@@ -31,6 +31,7 @@
       "TStartUpScreen"
     ],
     "menu_accesible": false,
+    "data_load_smoke_ui_keyboard": true,
     "items_menu_principal": []
   },
   "seccion_4_config": {

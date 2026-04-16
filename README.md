@@ -4,14 +4,14 @@ Servidor MCP local para automatizar InfoStat en Windows, orientado inicialmente 
 
 ## Estado actual
 
-Este repositorio se encuentra en implementacion de Sprint 0 + Sprint 1 (infraestructura).
+Este repositorio se encuentra en implementacion de Sprint 2 (Bloque A teclado) sobre la base de Sprint 0 + Sprint 1.
 
 Incluye actualmente:
 - Estructura base de servidor MCP en Python.
 - Configuracion central en config.toml.
 - Seguridad de rutas y extensiones para carga de datos.
 - Gestion de sesion (launch, status, close).
-- Carga de datos en modo infraestructura (metadata para CSV/TXT).
+- Carga de datos CSV/TXT con estrategia de teclado en InfoStat (Alt/Ctrl atajos + dialogo abrir).
 - Lectura de resultados en formato raw_text.
 - Tests unitarios iniciales.
 
@@ -91,4 +91,4 @@ mcp-infostat/
 
 ## Proximo paso
 
-Sprint 2: agregar los primeros analisis estadisticos (descriptivos, normalidad, ANOVA DCA) y parser estructurado de resultados.
+Completar Sprint 2 con los primeros analisis estadisticos (descriptivos, normalidad, ANOVA DCA) y parser estructurado de resultados.

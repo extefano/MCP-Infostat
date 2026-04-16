@@ -11,16 +11,23 @@ class FakeLauncher:
     def __init__(self) -> None:
         self._ready = False
         self._pid = 4242
+        self._backend = "win32"
+        self.keyboard_success = True
+        self.keyboard_calls = 0
 
-    def launch(self, exe_path: str | None = None, timeout: float = 30) -> dict[str, int]:
+    def launch(self, exe_path: str | None = None, timeout: float = 30) -> dict[str, int | str]:
         self._ready = True
-        return {"pid": self._pid}
+        return {"pid": self._pid, "backend": self._backend}
 
     def is_ready(self) -> bool:
         return self._ready
 
     def close(self, save_before_close: bool = False) -> None:
         self._ready = False
+
+    def load_file_via_keyboard(self, file_path: Path, timeout: float = 10.0) -> bool:
+        self.keyboard_calls += 1
+        return self.keyboard_success
 
 
 @pytest.fixture()
@@ -38,10 +45,12 @@ def manager(tmp_path: Path) -> InfoStatSessionManager:
 def test_launch_status_close_cycle(manager: InfoStatSessionManager) -> None:
     launched = manager.launch()
     assert launched["running"] is True
+    assert launched["ui_backend"] == "win32"
 
     status = manager.status()
     assert status["running"] is True
     assert status["dataset_loaded"] is False
+    assert status["ui_backend"] == "win32"
 
     closed = manager.close()
     assert closed["running"] is False
@@ -55,7 +64,9 @@ def test_data_load_and_get_info_csv(manager: InfoStatSessionManager, tmp_path: P
     loaded = manager.data_load(file_path=dataset, sheet_name=None, delimiter=None, has_header=True)
     assert loaded["rows"] == 2
     assert loaded["cols"] == 2
-    assert loaded["mode"] == "metadata_only"
+    assert loaded["mode"] == "ui_keyboard"
+    assert loaded["ui_loaded"] is True
+    assert manager.launcher.keyboard_calls == 1
 
     info = manager.data_get_info()
     assert info["n_rows"] == 2
@@ -71,3 +82,17 @@ def test_data_load_requires_active_session(manager: InfoStatSessionManager, tmp_
         manager.data_load(file_path=dataset, sheet_name=None, delimiter=None, has_header=True)
 
     assert exc_info.value.code == "SESSION_NOT_ACTIVE"
+
+
+def test_data_load_raises_when_keyboard_strategy_fails(manager: InfoStatSessionManager, tmp_path: Path) -> None:
+    manager.launcher.keyboard_success = False
+    manager.launch()
+
+    dataset = tmp_path / "test.csv"
+    dataset.write_text("a,b\n1,2\n", encoding="utf-8")
+
+    with pytest.raises(InfoStatError) as exc_info:
+        manager.data_load(file_path=dataset, sheet_name=None, delimiter=None, has_header=True)
+
+    assert manager.launcher.keyboard_calls == 1
+    assert exc_info.value.code == "DATA_LOAD_UI_FAILED"

@@ -13,17 +13,16 @@ Repositorio: https://github.com/extefano/MCP-Infostat
 
 ## Estado del código al inicio de esta especificación
 
-Sprint 0+1 COMPLETO. Implementado y validado:
+Sprint 0+1 COMPLETO y Sprint 2 BLOQUE A (teclado) en progreso. Implementado y validado:
 
 - `server.py` con tools: `infostat_launch`, `infostat_status`, `infostat_close`,
-  `data_load` (metadata-only), `data_get_info`, `results_get_last` (raw_text)
+  `data_load` (carga UI por teclado para CSV/TXT), `data_get_info`, `results_get_last` (raw_text)
 - Módulos: `config.py`, `errors.py`, `security.py`, `session.py`, `utils.py`
 - UI: `launcher.py` | Results: `capture.py`
-- Tests: 7/7 pasando
+- Tests: suite unitaria verde
 - Transporte: stdio
 
 Lo que NO está implementado todavía:
-- Automatización UI real de InfoStat (pywinauto)
 - Análisis estadísticos (descriptivos, normalidad, ANOVA)
 - Parser estructurado de resultados (`.ist` → JSON)
 - `results_get_last` modo structured
