@@ -37,7 +37,7 @@ def manager(tmp_path: Path) -> InfoStatSessionManager:
         paths=PathsConfig(data_base_dir=tmp_path, results_base_dir=tmp_path / "results"),
         timeouts=TimeoutsConfig(),
         mcp=MCPConfig(transport="stdio"),
-        security=SecurityConfig(allowed_extensions=[".csv", ".txt"], max_file_size_mb=10),
+        security=SecurityConfig(allowed_extensions=[".csv", ".txt", ".xls", ".xlsx", ".dbf"], max_file_size_mb=10),
     )
     return InfoStatSessionManager(config=config, launcher=FakeLauncher())
 
@@ -66,12 +66,65 @@ def test_data_load_and_get_info_csv(manager: InfoStatSessionManager, tmp_path: P
     assert loaded["cols"] == 2
     assert loaded["mode"] == "ui_keyboard"
     assert loaded["ui_loaded"] is True
+    assert loaded["format"] == ".csv"
     assert manager.launcher.keyboard_calls == 1
 
     info = manager.data_get_info()
     assert info["n_rows"] == 2
     assert info["n_cols"] == 2
     assert info["columns"] == ["Tratamiento", "Rendimiento"]
+    assert info["format"] == ".csv"
+
+
+def test_data_load_and_get_info_xlsx(manager: InfoStatSessionManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manager.launch()
+
+    dataset = tmp_path / "test.xlsx"
+    dataset.write_text("placeholder", encoding="utf-8")
+
+    def fake_scan_excel(file_path: Path, extension: str, sheet_name: str | None, has_header: bool) -> tuple[int, list[str], str]:
+        assert file_path == dataset
+        assert extension == ".xlsx"
+        assert sheet_name == "Hoja1"
+        assert has_header is True
+        return 3, ["VarA", "VarB"], "Hoja1"
+
+    monkeypatch.setattr(InfoStatSessionManager, "_scan_excel", staticmethod(fake_scan_excel))
+
+    loaded = manager.data_load(file_path=dataset, sheet_name="Hoja1", delimiter=None, has_header=True)
+    assert loaded["rows"] == 3
+    assert loaded["cols"] == 2
+    assert loaded["format"] == ".xlsx"
+    assert loaded["sheet_name"] == "Hoja1"
+    assert loaded["delimiter"] is None
+
+    info = manager.data_get_info()
+    assert info["format"] == ".xlsx"
+    assert info["sheet_name"] == "Hoja1"
+    assert info["columns"] == ["VarA", "VarB"]
+
+
+def test_data_load_and_get_info_dbf(manager: InfoStatSessionManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manager.launch()
+
+    dataset = tmp_path / "test.dbf"
+    dataset.write_bytes(b"placeholder")
+
+    def fake_scan_dbf(file_path: Path) -> tuple[int, list[str]]:
+        assert file_path == dataset
+        return 4, ["ID", "TRAT"]
+
+    monkeypatch.setattr(InfoStatSessionManager, "_scan_dbf", staticmethod(fake_scan_dbf))
+
+    loaded = manager.data_load(file_path=dataset, sheet_name=None, delimiter=None, has_header=True)
+    assert loaded["rows"] == 4
+    assert loaded["cols"] == 2
+    assert loaded["format"] == ".dbf"
+    assert loaded["delimiter"] is None
+
+    info = manager.data_get_info()
+    assert info["format"] == ".dbf"
+    assert info["columns"] == ["ID", "TRAT"]
 
 
 def test_data_load_requires_active_session(manager: InfoStatSessionManager, tmp_path: Path) -> None:
@@ -96,3 +149,14 @@ def test_data_load_raises_when_keyboard_strategy_fails(manager: InfoStatSessionM
 
     assert manager.launcher.keyboard_calls == 1
     assert exc_info.value.code == "DATA_LOAD_UI_FAILED"
+
+
+def test_data_load_rejects_unsupported_extension(manager: InfoStatSessionManager, tmp_path: Path) -> None:
+    manager.launch()
+    dataset = tmp_path / "test.unsupported"
+    dataset.write_text("x", encoding="utf-8")
+
+    with pytest.raises(InfoStatError) as exc_info:
+        manager.data_load(file_path=dataset, sheet_name=None, delimiter=None, has_header=True)
+
+    assert exc_info.value.code == "DATA_FORMAT_NOT_IMPLEMENTED"

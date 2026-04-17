@@ -16,7 +16,9 @@ class DatasetInfo:
     rows: int
     columns: list[str]
     has_header: bool
-    delimiter: str
+    delimiter: str | None
+    file_format: str
+    sheet_name: str | None = None
 
 
 @dataclass
@@ -30,6 +32,8 @@ class InfoStatSession:
 
 
 class InfoStatSessionManager:
+    SUPPORTED_DATA_EXTENSIONS = {".csv", ".txt", ".xls", ".xlsx", ".dbf"}
+
     def __init__(self, config: AppConfig, launcher: InfoStatLauncher | None = None):
         self.config = config
         self.launcher = launcher or InfoStatLauncher(config.infostat.exe_path)
@@ -95,15 +99,34 @@ class InfoStatSessionManager:
     ) -> dict[str, Any]:
         self._ensure_ready()
 
-        if file_path.suffix.lower() not in {".csv", ".txt"}:
+        ext = file_path.suffix.lower()
+        if ext not in self.SUPPORTED_DATA_EXTENSIONS:
             raise InfoStatError(
                 code="DATA_FORMAT_NOT_IMPLEMENTED",
-                message="En este hito solo se soporta carga local de CSV/TXT para metadata.",
-                details={"requested_extension": file_path.suffix.lower()},
+                message="Formato de datos no soportado para carga en InfoStat.",
+                details={
+                    "requested_extension": ext,
+                    "supported_extensions": sorted(self.SUPPORTED_DATA_EXTENSIONS),
+                },
             )
 
-        separator = delimiter or self._detect_delimiter(file_path)
-        rows, columns = self._scan_csv(file_path, delimiter=separator, has_header=has_header)
+        rows: int
+        columns: list[str]
+        separator: str | None = None
+        effective_sheet: str | None = None
+
+        if ext in {".csv", ".txt"}:
+            separator = delimiter or self._detect_delimiter(file_path)
+            rows, columns = self._scan_csv(file_path, delimiter=separator, has_header=has_header)
+        elif ext in {".xls", ".xlsx"}:
+            rows, columns, effective_sheet = self._scan_excel(
+                file_path=file_path,
+                extension=ext,
+                sheet_name=sheet_name,
+                has_header=has_header,
+            )
+        else:
+            rows, columns = self._scan_dbf(file_path=file_path)
 
         self.session.active_dataset = file_path
         self.session.dataset_info = DatasetInfo(
@@ -112,6 +135,8 @@ class InfoStatSessionManager:
             columns=columns,
             has_header=has_header,
             delimiter=separator,
+            file_format=ext,
+            sheet_name=effective_sheet,
         )
 
         try:
@@ -141,9 +166,10 @@ class InfoStatSessionManager:
             "rows": rows,
             "cols": len(columns),
             "columns": columns,
-            "sheet_name": sheet_name,
+            "sheet_name": effective_sheet,
             "delimiter": separator,
             "has_header": has_header,
+            "format": ext,
             "mode": "ui_keyboard",
             "ui_loaded": True,
             "ui_backend": self.session.ui_backend,
@@ -165,6 +191,8 @@ class InfoStatSessionManager:
             "columns": info.columns,
             "delimiter": info.delimiter,
             "has_header": info.has_header,
+            "format": info.file_format,
+            "sheet_name": info.sheet_name,
         }
 
     def append_result(self, text: str) -> None:
@@ -208,3 +236,127 @@ class InfoStatSessionManager:
         width = len(rows[0])
         columns = [f"col_{i+1}" for i in range(width)]
         return len(rows), columns
+
+    @classmethod
+    def _scan_excel(
+        cls,
+        file_path: Path,
+        extension: str,
+        sheet_name: str | None,
+        has_header: bool,
+    ) -> tuple[int, list[str], str]:
+        if extension == ".xlsx":
+            try:
+                from openpyxl import load_workbook
+            except Exception as exc:  # pragma: no cover - depende de entorno
+                raise InfoStatError(
+                    code="DEPENDENCY_MISSING",
+                    message="Falta dependencia para leer archivos XLSX.",
+                    details={"dependency": "openpyxl", "extension": extension},
+                ) from exc
+
+            workbook = load_workbook(filename=str(file_path), read_only=True, data_only=True)
+            try:
+                if sheet_name:
+                    if sheet_name not in workbook.sheetnames:
+                        raise InfoStatError(
+                            code="DATA_SHEET_NOT_FOUND",
+                            message="No se encontro la hoja solicitada en el archivo Excel.",
+                            details={"sheet_name": sheet_name, "available_sheets": workbook.sheetnames},
+                        )
+                    selected_sheet_name = sheet_name
+                else:
+                    if not workbook.sheetnames:
+                        return 0, [], ""
+                    selected_sheet_name = workbook.sheetnames[0]
+
+                worksheet = workbook[selected_sheet_name]
+                rows = []
+                for raw_row in worksheet.iter_rows(values_only=True):
+                    values = cls._normalize_row_values(raw_row)
+                    if values:
+                        rows.append(values)
+            finally:
+                workbook.close()
+
+            row_count, columns = cls._rows_to_metadata(rows=rows, has_header=has_header)
+            return row_count, columns, selected_sheet_name
+
+        try:
+            import xlrd
+        except Exception as exc:  # pragma: no cover - depende de entorno
+            raise InfoStatError(
+                code="DEPENDENCY_MISSING",
+                message="Falta dependencia para leer archivos XLS.",
+                details={"dependency": "xlrd", "extension": extension},
+            ) from exc
+
+        workbook = xlrd.open_workbook(str(file_path))
+        if sheet_name:
+            try:
+                worksheet = workbook.sheet_by_name(sheet_name)
+                selected_sheet_name = sheet_name
+            except Exception as exc:
+                raise InfoStatError(
+                    code="DATA_SHEET_NOT_FOUND",
+                    message="No se encontro la hoja solicitada en el archivo Excel.",
+                    details={"sheet_name": sheet_name, "available_sheets": workbook.sheet_names()},
+                ) from exc
+        else:
+            if workbook.nsheets == 0:
+                return 0, [], ""
+            worksheet = workbook.sheet_by_index(0)
+            selected_sheet_name = worksheet.name
+
+        rows = []
+        for index in range(worksheet.nrows):
+            values = cls._normalize_row_values(worksheet.row_values(index))
+            if values:
+                rows.append(values)
+
+        row_count, columns = cls._rows_to_metadata(rows=rows, has_header=has_header)
+        return row_count, columns, selected_sheet_name
+
+    @staticmethod
+    def _scan_dbf(file_path: Path) -> tuple[int, list[str]]:
+        try:
+            from dbfread import DBF
+        except Exception as exc:  # pragma: no cover - depende de entorno
+            raise InfoStatError(
+                code="DEPENDENCY_MISSING",
+                message="Falta dependencia para leer archivos DBF.",
+                details={"dependency": "dbfread", "extension": ".dbf"},
+            ) from exc
+
+        table = DBF(str(file_path), load=True, char_decode_errors="ignore")
+        columns = [field.name for field in table.fields]
+        rows = len(table.records)
+        return rows, columns
+
+    @staticmethod
+    def _normalize_row_values(raw_row: Any) -> list[Any]:
+        values = list(raw_row)
+        while values and (values[-1] is None or str(values[-1]).strip() == ""):
+            values.pop()
+        return values
+
+    @classmethod
+    def _rows_to_metadata(cls, rows: list[list[Any]], has_header: bool) -> tuple[int, list[str]]:
+        if not rows:
+            return 0, []
+
+        first_row = rows[0]
+        if has_header:
+            header = cls._normalize_header(first_row)
+            return max(len(rows) - 1, 0), header
+
+        width = len(first_row)
+        return len(rows), [f"col_{i+1}" for i in range(width)]
+
+    @staticmethod
+    def _normalize_header(values: list[Any]) -> list[str]:
+        normalized: list[str] = []
+        for index, value in enumerate(values):
+            name = str(value).strip() if value is not None else ""
+            normalized.append(name or f"col_{index+1}")
+        return normalized

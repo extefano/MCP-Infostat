@@ -118,11 +118,11 @@ def data_get_info() -> dict[str, Any]:
 
 
 @mcp.tool()
-def results_get_last(format: str = "raw_text") -> dict[str, Any]:
-    """Retorna resultados de InfoStat. En este hito solo se soporta formato raw_text."""
+def results_get_last(format: str = "raw_text", analysis_type: str | None = None) -> dict[str, Any]:
+    """Retorna resultados de InfoStat en formato raw_text o structured."""
 
     def _impl() -> dict[str, Any]:
-        return RESULTS_CAPTURE.get_last(format=format)
+        return RESULTS_CAPTURE.get_last(format=format, analysis_type=analysis_type)
 
     return _run_tool("results_get_last", _impl)
 

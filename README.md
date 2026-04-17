@@ -11,13 +11,12 @@ Incluye actualmente:
 - Configuracion central en config.toml.
 - Seguridad de rutas y extensiones para carga de datos.
 - Gestion de sesion (launch, status, close).
-- Carga de datos CSV/TXT con estrategia de teclado en InfoStat (Alt/Ctrl atajos + dialogo abrir).
-- Lectura de resultados en formato raw_text.
+- Carga de datos CSV/TXT/XLS/XLSX/DBF con estrategia de teclado en InfoStat (Alt/Ctrl atajos + dialogo abrir).
+- Lectura de resultados en formato raw_text y structured (descriptivos, normalidad, anova_dca).
 - Tests unitarios iniciales.
 
 No incluye aun:
 - Analisis estadistico (descriptivos, ANOVA, regresion, etc).
-- Parser estructurado de resultados por tipo de analisis.
 - Transporte HTTP (solo stdio en este hito).
 
 ## Alcance del hito actual
@@ -29,7 +28,7 @@ Objetivo de infraestructura:
 3. infostat_close
 4. data_load
 5. data_get_info
-6. results_get_last (raw_text)
+6. results_get_last (raw_text/structured)
 
 ## Requisitos
 

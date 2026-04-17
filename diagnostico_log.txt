@@ -1,6 +1,6 @@
 ﻿=============================================
 MCP-InfoStat -- Diagnostico Automatico
-Inicio: 2026-04-16 20:46:26
+Inicio: 2026-04-16 20:58:32
 =============================================
 
 [SECCION 1] Entorno Python
@@ -16,18 +16,31 @@ S1.5 Suite de tests:
   rootdir: C:\Users\zappa\MCP-Infostat
   configfile: pyproject.toml
   plugins: anyio-4.13.0, mock-3.15.1
-  collecting ... collected 8 items
+  collecting ... collected 21 items
   
-  tests/test_security.py::test_validate_input_path_accepts_file_inside_base PASSED [ 12%]
-  tests/test_security.py::test_validate_input_path_rejects_outside_base PASSED [ 25%]
-  tests/test_security.py::test_validate_input_path_rejects_extension PASSED [ 37%]
-  tests/test_session.py::test_launch_status_close_cycle PASSED             [ 50%]
-  tests/test_session.py::test_data_load_and_get_info_csv PASSED            [ 62%]
-  tests/test_session.py::test_data_load_requires_active_session PASSED     [ 75%]
-  tests/test_session.py::test_data_load_raises_when_keyboard_strategy_fails PASSED [ 87%]
+  tests/test_parser.py::test_parse_descriptivos_single_variable PASSED     [  4%]
+  tests/test_parser.py::test_parse_normalidad_shapiro PASSED               [  9%]
+  tests/test_parser.py::test_parse_anova_dca_table_and_metrics PASSED      [ 14%]
+  tests/test_parser.py::test_parse_rejects_unknown_analysis_type PASSED    [ 19%]
+  tests/test_parser.py::test_parse_descriptivos_requires_variable_block PASSED [ 23%]
+  tests/test_results_capture.py::test_get_last_returns_raw_text PASSED     [ 28%]
+  tests/test_results_capture.py::test_get_last_structured_requires_analysis_type PASSED [ 33%]
+  tests/test_results_capture.py::test_get_last_structured_rejects_empty_result_buffer PASSED [ 38%]
+  tests/test_results_capture.py::test_get_last_structured_parses_payload PASSED [ 42%]
+  tests/test_results_capture.py::test_get_last_structured_reports_parse_failure PASSED [ 47%]
+  tests/test_security.py::test_validate_input_path_accepts_file_inside_base PASSED [ 52%]
+  tests/test_security.py::test_validate_input_path_rejects_outside_base PASSED [ 57%]
+  tests/test_security.py::test_validate_input_path_rejects_extension PASSED [ 61%]
+  tests/test_session.py::test_launch_status_close_cycle PASSED             [ 66%]
+  tests/test_session.py::test_data_load_and_get_info_csv PASSED            [ 71%]
+  tests/test_session.py::test_data_load_and_get_info_xlsx PASSED           [ 76%]
+  tests/test_session.py::test_data_load_and_get_info_dbf PASSED            [ 80%]
+  tests/test_session.py::test_data_load_requires_active_session PASSED     [ 85%]
+  tests/test_session.py::test_data_load_raises_when_keyboard_strategy_fails PASSED [ 90%]
+  tests/test_session.py::test_data_load_rejects_unsupported_extension PASSED [ 95%]
   tests/test_utils.py::test_build_response_success_shape PASSED            [100%]
   
-  ============================== 8 passed in 0.88s ==============================
+  ============================= 21 passed in 0.95s ==============================
 
 [SECCION 2] InfoStat instalado
 ---
@@ -61,7 +74,7 @@ S2.4 Archivos de resultados previos de InfoStat:
 S3.1 PASS: pywinauto disponible (0.6.9)
 S3.2 PASS: pywin32 disponible
 S3.3 Prueba de lanzamiento (espera 5s)...
-  PASS:pid=32840
+  PASS:pid=16540
 S3.4 Deteccion de ventana pywinauto (espera 8s)...
   PASS:backend=uia:ventanas=1
     VENTANA:titulo='Acerca de...'|clase='TStartUpScreen'
@@ -106,6 +119,6 @@ DECISION:
   => BLOQUE A con estrategia teclado (Alt+F, SendKeys).
   !! NOTA_COMPAT: revisar x86/x64, diferencias con manual 2008 y version MSI registrada.
 
-Fin diagnostico: 2026-04-16 20:46:59
+Fin diagnostico: 2026-04-16 20:59:06
 Log guardado en: diagnostico_log.txt (si usaste Tee-Object)
 

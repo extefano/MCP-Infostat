@@ -16,7 +16,7 @@ Repositorio: https://github.com/extefano/MCP-Infostat
 Sprint 0+1 COMPLETO y Sprint 2 BLOQUE A (teclado) en progreso. Implementado y validado:
 
 - `server.py` con tools: `infostat_launch`, `infostat_status`, `infostat_close`,
-  `data_load` (carga UI por teclado para CSV/TXT), `data_get_info`, `results_get_last` (raw_text)
+  `data_load` (carga UI por teclado para CSV/TXT/XLS/XLSX/DBF), `data_get_info`, `results_get_last` (raw_text/structured)
 - Módulos: `config.py`, `errors.py`, `security.py`, `session.py`, `utils.py`
 - UI: `launcher.py` | Results: `capture.py`
 - Tests: suite unitaria verde
@@ -24,8 +24,7 @@ Sprint 0+1 COMPLETO y Sprint 2 BLOQUE A (teclado) en progreso. Implementado y va
 
 Lo que NO está implementado todavía:
 - Análisis estadísticos (descriptivos, normalidad, ANOVA)
-- Parser estructurado de resultados (`.ist` → JSON)
-- `results_get_last` modo structured
+- Parsers avanzados de resultados para más tipos de análisis
 
 ---
 
